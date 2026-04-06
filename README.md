@@ -29,9 +29,9 @@ graph TD
         end
 
         subgraph Databricks Compute Clusters
-            Upload[upload_dataset.py<br>Batch Ingestion Job]:::databricks
-            Deploy[deploy_model.py<br>Model Packager]:::databricks
-            Orch[main.py Orchestrator<br>Evaluations & Inference]:::databricks
+            Upload[Data Ingestion Job<br>Volume Batch Sync]:::databricks
+            Deploy[Model Registration Job<br>PyFunc Packager]:::databricks
+            Orch[GenOps Orchestrator<br>Evaluations & Inference]:::databricks
         end
 
         subgraph MLflow Native Services
