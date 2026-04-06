@@ -21,19 +21,25 @@ This architecture leverages a custom `mlflow.pyfunc.PythonModel` to decouple Mod
 
 ```text
 .
+├── dags/
+│   ├── create_databricks_jobs.py  # Generates DAG Workflows via Databricks SDK
+│   ├── evaluation_job.py          # Entrypoint for Evaluation Tasks
+│   └── inference_job.py           # Entrypoint for Inference Tasks
 ├── deploy_model.py                # Standalone script to register the PyFunc model to Databricks
-├── main.py                        # Orchestrator supporting multiple execution modes
+├── main.py                        # Local Orchestrator (For testing only)
 ├── upload_dataset.py              # Utility to seed mock images & JSON datasets to Unity Catalog Volumes
 ├── requirements.txt               # Databricks SDK & MLflow Dependencies
 ├── .env.example                   # Databricks Authentication Configuration
 └── src/
     └── kie_pipeline/
         ├── __init__.py            
+        ├── data_loader.py         # Unity Catalog Volume loading logic
         ├── evaluation.py          # Granular evaluation logic
         ├── inference.py           # Production batch inference loop
         ├── mock_services.py       # Simulated ADE and LangGraph dependencies
         ├── model.py               # MLflow PyFunc model definition (KIEPipelineModel)
-        └── registry.py            # Unity Catalog target configuration
+        ├── registry.py            # Unity Catalog target configuration
+        └── utils.py               # MLflow tracing and environment config
 ```
 
 ## Features Deep Dive
@@ -89,23 +95,25 @@ python deploy_model.py
 ```
 *Note: This automatically provisions your local `.env` file with the deployed `MODEL_URI`. Review `.env.example` to see customizable variables.*
 
-### Step 3: Running Pipeline Jobs
-Use `main.py` passing the desired `--mode` argument to trigger specific pipeline tasks pointing to Databricks endpoints. It dynamically downloads the correct Databricks Volume datasets uploaded in Step 1!
-
-**1. Inference Mode**  
-Takes a batch of unseen raw images, extracts JSON metadata, and logs outputs securely to Databricks.
+### Step 3: Deploying Databricks Workflows (Production)
+For production environments, pipeline orchestrations should be fully submitted to Databricks Workflows (DAGs) instead of running locally.
+1. Upload your codebase physically into your Databricks Workspace (`/Workspace/Users/...`).
+2. Open `dags/create_databricks_jobs.py` and modify `WORKSPACE_BASE_PATH` to match your Workspace folder.
+3. Execute the generator:
 ```bash
+python dags/create_databricks_jobs.py
+```
+This produces two distinct automated Workflows natively inside your cluster:
+- **`DAG_1_Inference_Event_Trigger`**: Listens for Azure Storage injections to route images through the KIE Pipeline dynamically.
+- **`DAG_2_Evaluation_And_Deploy`**: Packages the newly evaluated intelligence into a production PyFunc payload automatically.
+
+### Running Locally (Testing Use-Case)
+If you just want to run tasks on your local terminal iteratively, you can still use the local `main.py` orchestrator instead of spinning up the DAGs:
+
+```bash
+# Takes a batch of unseen raw images, extracts JSON metadata
 python main.py --mode inference
-```
 
-**2. Evaluate Mode**  
-Evaluates the active Unity Catalog model against an injected dataset.
-```bash
+# Evaluates the active Unity Catalog model against an injected dataset
 python main.py --mode evaluate
-```
-
-**3. Evaluate & Deploy Mode**  
-Executes the evaluation gating pipeline first; mimicking logic to gate or push a successful ML model into a Production alias.
-```bash
-python main.py --mode evaluate-deploy
 ```
