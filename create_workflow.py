@@ -11,28 +11,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def create_databricks_dag():
-    """Generates a Databricks Job Workflow DAG (Infrastructure as Code)"""
-    try:
-        w = WorkspaceClient()
-        logger.info("Successfully connected to Databricks Workspace.")
-    except Exception as e:
-        logger.error(f"Failed to connect. Check DATABRICKS_HOST in .env: {e}")
-        return
-        
-    job_name = "KIE_GenOps_Daily_Pipeline"
-    logger.info(f"Building DAG Job: {job_name} ...")
-
-    # Define a shared cluster for all tasks to optimize cost/time
-    shared_cluster_key = "kie_pipeline_cluster"
-    cluster_spec = JobCluster(
-        job_cluster_key=shared_cluster_key,
+def get_shared_cluster_spec(key: str) -> JobCluster:
+    return JobCluster(
+        job_cluster_key=key,
         new_cluster={
             "spark_version": "14.3.x-cpu-ml-scala2.12", # ML Runtime
             "node_type_id": "Standard_DS3_v2",          # Azure Default Small Node
             "num_workers": 1,
             "spark_env_vars": {
-                # We inject our Unity Catalog settings into the Cluster Environment!
                 "UC_CATALOG": os.getenv("UC_CATALOG", "main"),
                 "UC_SCHEMA": os.getenv("UC_SCHEMA", "default"),
                 "UC_MODEL_NAME": os.getenv("UC_MODEL_NAME", "kie_pipeline_model"),
@@ -40,65 +26,96 @@ def create_databricks_dag():
             }
         }
     )
+
+def create_inference_dag(w: WorkspaceClient, git_source: GitSource):
+    """
+    DAG 1: Designed to be triggered by Azure Storage events (when new files arrive).
+    Will execute KIE Inference and store logs.
+    """
+    cluster_key = "inference_cluster"
     
-    # ------------------ DEFINE DAG TASKS ------------------
-    
-    # Task 1: Ingestion
-    task_ingest = Task(
-        task_key="Provision_Data",
-        description="Pulls images and metadata into Unity Catalog Volumes.",
-        job_cluster_key=shared_cluster_key,
+    # In the future, parameters can accept dynamic inputs like Azure Storage Paths:
+    # parameters=["--mode", "inference", "--file_path", "{{job.trigger.file_path}}"]
+    task_infer = Task(
+        task_key="Run_Dynamic_Batch_Inference",
+        description="Triggered by Azure Storage. Executes inference against specific new patient data.",
+        job_cluster_key=cluster_key,
         spark_python_task=SparkPythonTask(
-            python_file="upload_dataset.py", 
+            python_file="main.py", 
+            parameters=["--mode", "inference"], 
             source="GIT"
         )
     )
 
-    # Task 2: Model Deployment (Wait for Ingestion)
+    try:
+        job = w.jobs.create(
+            name="DAG_1_Inference_Event_Trigger",
+            git_source=git_source,
+            job_clusters=[get_shared_cluster_spec(cluster_key)],
+            tasks=[task_infer]
+        )
+        logger.info(f"SUCCESS! Created Inference DAG ID: {job.job_id}")
+    except Exception as e:
+        logger.error(f"Failed to create Inference DAG: {e}")
+
+def create_evaluation_dag(w: WorkspaceClient, git_source: GitSource):
+    """
+    DAG 2: Designed to be run manually or automatically via CI/CD redeployment.
+    Deploys the model PyFunc and evaluates it against standard ground truth.
+    """
+    cluster_key = "eval_cluster"
+    
+    # 1. Model Packaging & Registration
     task_deploy = Task(
         task_key="Deploy_PyFunc_Model",
         description="Registers the core AI extraction logic to Unity Catalog.",
-        depends_on=[TaskDependency(task_key="Provision_Data")],
-        job_cluster_key=shared_cluster_key,
+        job_cluster_key=cluster_key,
         spark_python_task=SparkPythonTask(
             python_file="deploy_model.py", 
             source="GIT"
         )
     )
     
-    # Task 3: Batch Inference (Wait for Model Deployment)
-    task_infer = Task(
-        task_key="Run_Batch_Inference",
-        description="Executes the main pipeline against unseen volumetric data.",
+    # 2. Evaluation
+    task_eval = Task(
+        task_key="Run_Model_Evaluation",
+        description="Automated Accuracy Measurement against Ground Truth Volume dataset.",
         depends_on=[TaskDependency(task_key="Deploy_PyFunc_Model")],
-        job_cluster_key=shared_cluster_key,
+        job_cluster_key=cluster_key,
         spark_python_task=SparkPythonTask(
             python_file="main.py", 
-            parameters=["--mode", "inference"],
+            parameters=["--mode", "evaluate"],
             source="GIT"
         )
     )
 
-    # ------------------ CREATE THE JOB ------------------
     try:
-        # We point Databricks natively to your newly published GitHub repo!
-        git_source = GitSource(
-            git_url="https://github.com/watthsup/mlflow-genpos-poc.git",
-            git_provider="gitHub",
-            git_branch="main"
-        )
-
         job = w.jobs.create(
-            name=job_name,
+            name="DAG_2_Evaluation_And_Deploy",
             git_source=git_source,
-            job_clusters=[cluster_spec],
-            tasks=[task_ingest, task_deploy, task_infer]
+            job_clusters=[get_shared_cluster_spec(cluster_key)],
+            tasks=[task_deploy, task_eval]
         )
-        logger.info(f"SUCCESS! Created Databricks Workflow Job ID: {job.job_id}")
-        logger.info("Go to Databricks UI -> Workflows to see and run your new DAG!")
-        
+        logger.info(f"SUCCESS! Created Evaluation DAG ID: {job.job_id}")
     except Exception as e:
-        logger.error(f"Failed to create Job DAG: {e}")
+        logger.error(f"Failed to create Evaluation DAG: {e}")
 
 if __name__ == "__main__":
-    create_databricks_dag()
+    try:
+        w = WorkspaceClient()
+        logger.info("Successfully connected to Databricks Workspace.")
+    except Exception as e:
+        logger.error(f"Failed to connect. Check DATABRICKS_HOST in .env: {e}")
+        exit(1)
+
+    git_source = GitSource(
+        git_url="https://github.com/watthsup/mlflow-genpos-poc.git",
+        git_provider="gitHub",
+        git_branch="main"
+    )
+
+    logger.info("==== Building DAG 1 (Triggered Inference) ====")
+    create_inference_dag(w, git_source)
+    
+    logger.info("==== Building DAG 2 (CI/CD Evaluation & Deployment) ====")
+    create_evaluation_dag(w, git_source)
