@@ -41,8 +41,7 @@ def create_inference_dag(w: WorkspaceClient, git_source: GitSource):
         description="Triggered by Azure Storage. Executes inference against specific new patient data.",
         job_cluster_key=cluster_key,
         spark_python_task=SparkPythonTask(
-            python_file="main.py", 
-            parameters=["--mode", "inference"], 
+            python_file="dags/inference_job.py", 
             source="GIT"
         )
     )
@@ -83,8 +82,7 @@ def create_evaluation_dag(w: WorkspaceClient, git_source: GitSource):
         depends_on=[TaskDependency(task_key="Deploy_PyFunc_Model")],
         job_cluster_key=cluster_key,
         spark_python_task=SparkPythonTask(
-            python_file="main.py", 
-            parameters=["--mode", "evaluate"],
+            python_file="dags/evaluation_job.py",
             source="GIT"
         )
     )

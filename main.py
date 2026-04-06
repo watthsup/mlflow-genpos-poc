@@ -9,6 +9,8 @@ from databricks.sdk import WorkspaceClient
 
 from src.kie_pipeline.evaluation import run_evaluation_pipeline
 from src.kie_pipeline.inference import run_batch_inference_pipeline
+from src.kie_pipeline.utils import setup_mlflow, load_config
+from src.kie_pipeline.data_loader import fetch_volume_dataset
 
 load_dotenv()
 
@@ -17,51 +19,6 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-def load_config() -> str:
-    """Reads the dynamically created model_uri from the .env file."""
-    model_uri = os.getenv("MODEL_URI")
-    if not model_uri:
-        logger.error("MODEL_URI not found in environment! Please run `python deploy_model.py` first to register the model.")
-        sys.exit(1)
-    return model_uri
-
-def setup_mlflow():
-    """Initializes standard MLflow connection configuration from environment."""
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "databricks")
-    mlflow.set_tracking_uri(tracking_uri)
-    mlflow.set_registry_uri("databricks-uc")
-    try:
-        if hasattr(mlflow, "langchain"):
-            mlflow.langchain.autolog()
-    except Exception:
-        pass
-
-def fetch_volume_dataset(mode="evaluate"):
-    """Reads dataset dynamically from Databricks Unity Catalog Volumes."""
-    try:
-        w = WorkspaceClient()
-        catalog = os.getenv("UC_CATALOG", "main")
-        schema = os.getenv("UC_SCHEMA", "default")
-        volume_name = "kie_medical_dataset" # Should match upload_dataset.py
-        base_path = f"/Volumes/{catalog}/{schema}/{volume_name}"
-
-        if mode == "inference":
-            return [
-                f"{base_path}/doc_A.tiff", 
-                f"{base_path}/doc_B.png", 
-                f"{base_path}/new_doc.jpeg"
-            ]
-        
-        # Default to Evaluation Mode (read JSON dataset file mapping)
-        gt_path = f"{base_path}/ground_truth.json"
-        response = w.files.download(gt_path)
-        data = json.loads(response.contents.read().decode("utf-8"))
-        return data
-
-    except Exception as e:
-        logger.error(f"Failed to fetch dataset from Databricks Volume. Did you run upload_dataset.py? Error: {e}")
-        sys.exit(1)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MLOps KIE Pipeline Orchestrator")

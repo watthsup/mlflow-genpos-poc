@@ -1,4 +1,4 @@
-# Medical Document KIE Pipeline (Databricks GenOps)
+# Medical Document KIE Pipeline
 
 An enterprise-ready, modular MLOps Proof of Concept (POC) explicitly built to run on **Databricks** utilizing the native **Unity Catalog**. 
 
@@ -6,55 +6,9 @@ This architecture leverages a custom `mlflow.pyfunc.PythonModel` to decouple Mod
 
 ---
 
-## System Architecture (Databricks GenOps)
+## System Architecture
 
-```mermaid
-graph TD
-    classDef databricks fill:#ff3621,color:white,stroke:none,font-weight:bold
-    classDef storage fill:#00a39d,color:white,stroke:none
-    classDef default fill:#f4f4f4,stroke:#ccc
-    
-    subgraph Databricks Environment
-        subgraph Databricks Storage Layer
-            UC_Vol[Unity Catalog Volumes<br>/Volumes/catalog/schema/...]:::storage
-            Images[(Raw Medical Images)]:::storage
-            GT[(Ground Truth JSON)]:::storage
-            Images -.-> UC_Vol
-            GT -.-> UC_Vol
-        end
-
-        subgraph Databricks Workflows Layer
-            Upload[Data Ingestion Pipeline<br>Volume Batch Sync]:::databricks
-            Deploy[Model Release Trigger<br>PyFunc Packager]:::databricks
-            Orch[Daily KIE Pipeline DAG<br>Evaluations & Inference]:::databricks
-        end
-
-        subgraph MLflow Native Services
-            UC_Reg[(Unity Catalog Registry<br>Registered PyFunc Models)]
-            Tracking[(MLflow Tracking API<br>Experiments & Artifacts)]
-        end
-    end
-
-    subgraph External Systems
-        ADE[Azure Document Intelligence<br>OCR Engine]
-        LLM[Azure OpenAI / LLMs<br>LangGraph Logic]
-    end
-
-    %% Storage & Deployment flow
-    Upload -->|1. Provisions Files| UC_Vol
-    Deploy -->|2. Defines & Pushes PyFunc| UC_Reg
-    
-    %% Daily DAG flow
-    Orch -->|3. Streams Data| UC_Vol
-    Orch -.->|4. Resolves & Instantiates| UC_Reg
-    
-    %% PyFunc logic execution
-    UC_Reg == 5. PyFunc logic triggers ==> ADE
-    UC_Reg == 6. PyFunc logic triggers ==> LLM
-    
-    %% Telemetry flow
-    Orch -->|7. Publishes Metrics/Tables| Tracking
-```
+![alt text](image.png)
 
 ## Technology Stack
 * **Language:** Python 3.10+
