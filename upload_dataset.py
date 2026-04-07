@@ -35,7 +35,31 @@ def main():
     
     logger.info(f"Targeting Unity Catalog Volume: {volume_path}")
     
-    # 2. Automatically Create the Managed Volume (if it doesn't exist)
+    # 2. Automatically Create Catalog (If missing and user has permissions)
+    try:
+        w.catalogs.get(catalog)
+    except Exception:
+        logger.info(f"Catalog '{catalog}' not found. Attempting to create it...")
+        try:
+            w.catalogs.create(name=catalog)
+            logger.info(f"Created Managed Catalog: {catalog}!")
+        except Exception as e:
+            logger.error(f"Error creating catalog (You may be missing Admin perms): {e}")
+            return
+
+    # 3. Automatically Create Schema (If missing)
+    try:
+        w.schemas.get(full_name=f"{catalog}.{schema}")
+    except Exception:
+        logger.info(f"Schema '{schema}' not found. Attempting to create it...")
+        try:
+            w.schemas.create(name=schema, catalog_name=catalog)
+            logger.info(f"Created Managed Schema: {catalog}.{schema}!")
+        except Exception as e:
+            logger.error(f"Error creating schema: {e}")
+            return
+            
+    # 4. Automatically Create the Managed Volume
     try:
         w.volumes.create(
             catalog_name=catalog,
@@ -48,7 +72,7 @@ def main():
         # Expected if the volume already exists or if permissions restrict creation
         logger.info(f"Volume check passed (Already exists or missing creation perms: {e})")
     
-    # 3. Create Mock Local Images & Upload
+    # 5. Create Mock Local Images & Upload
     mock_images = ["doc_A.tiff", "doc_B.png", "new_doc.jpeg"]
     for img in mock_images:
         local_path = f"/tmp/{img}"
@@ -66,7 +90,7 @@ def main():
         except Exception as e:
             logger.error(f"Failed to upload {img}: {e}")
 
-    # 4. Create Mock Ground Truth JSON Dataset & Upload
+    # 6. Create Mock Ground Truth JSON Dataset & Upload
     # This maps the volume pathways exactly how main.py expects them in evaluation mode.
     gt_data = [
         {
