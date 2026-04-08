@@ -8,9 +8,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from dotenv import load_dotenv
 
-from src.kie_pipeline.inference import run_batch_inference_pipeline
-from src.kie_pipeline.data_loader import fetch_volume_dataset
-from src.kie_pipeline.utils import setup_mlflow, load_config
+from src.doc_guru.inference import run_batch_inference_pipeline
+from src.doc_guru.data_loader import fetch_volume_dataset
+from src.doc_guru.utils import setup_mlflow, load_config
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s - %(message)s")

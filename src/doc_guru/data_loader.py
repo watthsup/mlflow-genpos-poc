@@ -10,8 +10,8 @@ def fetch_volume_dataset(mode="evaluate"):
     try:
         w = WorkspaceClient()
         catalog = os.getenv("UC_CATALOG", "wks_aisd")
-        schema = os.getenv("UC_SCHEMA", "kie_project")
-        volume_name = "kie_dataset" # Should match upload_dataset.py
+        schema = os.getenv("UC_SCHEMA", "doc_guru_project")
+        volume_name = "doc_guru_dataset" # Should match upload_dataset.py
         base_path = f"/Volumes/{catalog}/{schema}/{volume_name}"
 
         if mode == "inference":

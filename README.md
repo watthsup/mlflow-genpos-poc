@@ -1,4 +1,4 @@
-# Medical Document KIE Pipeline
+# Medical Document DocGuru Pipeline
 
 An enterprise-ready, modular MLOps Proof of Concept (POC) explicitly built to run on **Databricks** utilizing the native **Unity Catalog**. 
 
@@ -31,13 +31,13 @@ This architecture leverages a custom `mlflow.pyfunc.PythonModel` to decouple Mod
 ├── requirements.txt               # Databricks SDK & MLflow Dependencies
 ├── .env.example                   # Databricks Authentication Configuration
 └── src/
-    └── kie_pipeline/
+    └── doc_guru/
         ├── __init__.py            
         ├── data_loader.py         # Unity Catalog Volume loading logic
         ├── evaluation.py          # Granular evaluation logic
         ├── inference.py           # Production batch inference loop
         ├── mock_services.py       # Simulated ADE and LangGraph dependencies
-        ├── model.py               # MLflow PyFunc model definition (KIEPipelineModel)
+        ├── model.py               # MLflow PyFunc model definition (DocGuruPipelineModel)
         ├── registry.py            # Unity Catalog target configuration
         └── utils.py               # MLflow tracing and environment config
 ```
@@ -72,8 +72,8 @@ DATABRICKS_HOST=https://<your-databricks-workspace-url>
 DATABRICKS_TOKEN=<your-personal-access-token>
 
 UC_CATALOG=wks_aisd
-UC_SCHEMA=kie_project
-UC_MODEL_NAME=kie_pipeline_model
+UC_SCHEMA=doc_guru_project
+UC_MODEL_NAME=doc_guru_model
 ```
 
 ---
@@ -104,7 +104,7 @@ For production environments, pipeline orchestrations should be fully submitted t
 python dags/create_databricks_jobs.py
 ```
 This produces two distinct automated Workflows natively inside your cluster:
-- **`DAG_1_Inference_Event_Trigger`**: Listens for Azure Storage injections to route images through the KIE Pipeline dynamically.
+- **`DAG_1_Inference_Event_Trigger`**: Listens for Azure Storage injections to route images through the DocGuru Pipeline dynamically.
 - **`DAG_2_Evaluation_And_Deploy`**: Packages the newly evaluated intelligence into a production PyFunc payload automatically.
 
 ### Running Locally (Testing Use-Case)

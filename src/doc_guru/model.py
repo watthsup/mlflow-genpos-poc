@@ -6,14 +6,14 @@ from .mock_services import mock_ade_extract, mock_langgraph_logic
 
 logger = logging.getLogger(__name__)
 
-class KIEPipelineModel(mlflow.pyfunc.PythonModel):
+class DocGuruPipelineModel(mlflow.pyfunc.PythonModel):
     """
-    Custom MLflow PyFunc model that encapsulates the complete KIE pipeline.
+    Custom MLflow PyFunc model that encapsulates the complete DocGuru pipeline.
     It takes an image path, performs ADE extraction, and routes through LangGraph logic.
     """
     def predict(self, context, model_input: List[str]) -> List[Dict[str, str]]:
         """
-        Executes KIE Pipeline for a batch of images.
+        Executes DocGuru Pipeline for a batch of images.
         
         Args:
             context: the MLflow context (injected by MLflow upon load)

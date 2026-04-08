@@ -7,10 +7,10 @@ import mlflow
 from dotenv import load_dotenv
 from databricks.sdk import WorkspaceClient
 
-from src.kie_pipeline.evaluation import run_evaluation_pipeline
-from src.kie_pipeline.inference import run_batch_inference_pipeline
-from src.kie_pipeline.utils import setup_mlflow, load_config
-from src.kie_pipeline.data_loader import fetch_volume_dataset
+from src.doc_guru.evaluation import run_evaluation_pipeline
+from src.doc_guru.inference import run_batch_inference_pipeline
+from src.doc_guru.utils import setup_mlflow, load_config
+from src.doc_guru.data_loader import fetch_volume_dataset
 
 load_dotenv()
 
@@ -21,7 +21,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="MLOps KIE Pipeline Orchestrator")
+    parser = argparse.ArgumentParser(description="MLOps DocGuru Pipeline Orchestrator")
     parser.add_argument(
         "--mode", 
         choices=["inference", "evaluate", "evaluate-deploy"], 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     
-    logger.info(f"==== Starting KIE Pipeline Orchestrator in {args.mode.upper()} mode ====")
+    logger.info(f"==== Starting DocGuru Pipeline Orchestrator in {args.mode.upper()} mode ====")
     
     setup_mlflow()
     model_uri = load_config()

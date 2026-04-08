@@ -3,7 +3,7 @@ import logging
 import mlflow
 from dotenv import load_dotenv, set_key
 
-from src.kie_pipeline.registry import log_and_register_model
+from src.doc_guru.registry import log_and_register_model
 
 load_dotenv()
 

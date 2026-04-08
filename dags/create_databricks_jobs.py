@@ -23,8 +23,8 @@ def get_shared_cluster_spec(key: str) -> JobCluster:
             "num_workers": 1,
             "spark_env_vars": {
                 "UC_CATALOG": os.getenv("UC_CATALOG", "wks_aisd"),
-                "UC_SCHEMA": os.getenv("UC_SCHEMA", "kie_project"),
-                "UC_MODEL_NAME": os.getenv("UC_MODEL_NAME", "kie_pipeline_model"),
+                "UC_SCHEMA": os.getenv("UC_SCHEMA", "doc_guru_project"),
+                "UC_MODEL_NAME": os.getenv("UC_MODEL_NAME", "doc_guru_model"),
                 "MODEL_URI": os.getenv("MODEL_URI", "")
             }
         }
@@ -33,7 +33,7 @@ def get_shared_cluster_spec(key: str) -> JobCluster:
 def create_inference_dag(w: WorkspaceClient):
     """
     DAG 1: Designed to be triggered by Azure Storage events (when new files arrive).
-    Will execute KIE Inference and store logs.
+    Will execute DocGuru Inference and store logs.
     """
     cluster_key = "inference_cluster"
     
